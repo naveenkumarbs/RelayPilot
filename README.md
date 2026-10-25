@@ -54,7 +54,7 @@ Progress below reflects the development savepoint reported by the maintainer. It
 - [x] Shared engine with request-scoped database sessions.
 - [x] Foreign-key enforcement on new SQLite connections.
 - [x] Database readiness endpoint and connection cleanup on shutdown.
-- [ ] Confirm tenant model and first Alembic migration are applied and verified.
+- [x] Confirm tenant model and first Alembic migration are applied and verified.
 - [ ] Seed two demo tenants.
 - [ ] Authentication and tenant/customer authorization.
 - [ ] Customer chat, RAG, tools, agent orchestration, and escalation.
@@ -71,7 +71,7 @@ No LLM credentials are required to run the current backend.
 | Business persistence | SQLite, SQLAlchemy | Implemented |
 | Schema migrations | Alembic | First migration pending confirmation |
 | Frontend | React, TypeScript, Vite, Material UI | Planned |
-| Identity | JWT authentication, password hashing, tenant membership | Planned; libraries to be selected |
+| Identity | User and tenant membership models; pwdlib with Argon2; JWT planned | Models and password hashing implemented; login and authorization pending |
 | Retrieval and model integrations | LangChain | Planned |
 | Vector storage | Local Chroma, tenant-scoped retrieval | Planned |
 | Agent orchestration | LangGraph | Planned |
@@ -211,6 +211,42 @@ python -m alembic check
 
 If those files have not been added yet, skip this step: health and database connectivity can be checked without application tables. Do not run `alembic init` in a checkout that already includes migration configuration.
 
+### Seed development tenants and accounts
+
+Run these commands from `backend`, with the virtual environment active.
+
+First, create the two demo tenants:
+
+    python -m app.scripts.seed_demo_tenants
+
+The tenants are:
+
+- `acme-services`
+- `brightdesk-solutions`
+
+The script skips existing tenants on repeated sequential runs.
+
+Next, create a development admin:
+
+    python -m app.scripts.create_demo_admin
+
+Run it once for each tenant, using different email addresses and passwords.
+
+Suggested demo identities:
+
+| Tenant slug | Admin email |
+| --- | --- |
+| `acme-services` | `admin.acme@example.com` |
+| `brightdesk-solutions` | `admin.brightdesk@example.com` |
+
+Passwords are entered through hidden terminal prompts and stored as Argon2 hashes. Use development-only passwords; do not commit credentials or database files.
+
+Both scripts require `RELAYPILOT_ENVIRONMENT=development`.
+
+The admin script creates a new user and their tenant membership in one transaction. If the email already exists, it makes no changes: it does not reset passwords or grant additional memberships.
+
+These accounts are preparation for authentication. Login endpoints are not implemented yet.
+
 ### 5. Start the backend
 
 ```powershell
@@ -307,12 +343,19 @@ Testing begins with each feature. M8 consolidates the evaluation harness and res
 
 - [x] SQLite engine and request-scoped sessions.
 - [x] Foreign-key enforcement and database readiness.
-- [x] Confirm model base, tenant model, and initial migration verification.
+- [x] Model base, tenant model, and initial migration verification.
 - [x] Idempotent development seed script for two tenants.
-- [ ] Users, tenant membership, and customer identity.
-- [ ] Authentication and password hashing.
+- [x] User identity and tenant membership models.
+- [x] Database constraints for unique memberships and allowed roles.
+- [x] User/membership migration applied and verified.
+- [x] Password hashing and verification using pwdlib with Argon2.
+- [x] Development-only admin creation with hidden password prompts.
+- [x] Demo admin accounts and memberships verified.
+- [ ] Login and short-lived JWT access tokens.
+- [ ] Protected authenticated-user endpoint.
 - [ ] Tenant/customer authorization checks with negative tests.
-- [ ] Define role permissions and disabled-tenant behavior.
+- [ ] Role permission enforcement.
+- [ ] Disabled-user, disabled-tenant, and disabled-membership access checks.
 
 #### M3–M5 — Customer experience and capabilities
 
@@ -361,7 +404,7 @@ For a model change, from `backend`:
 python -m alembic revision --autogenerate -m "describe the schema change"
 # Review the generated upgrade and downgrade functions before applying.
 python -m alembic upgrade head
-#seed demo tenants
+# seed demo tenants
 python -m app.scripts.seed_demo_tenants
 python -m alembic check
 ```
@@ -397,13 +440,18 @@ License and contribution terms have not yet been selected. Repository visibility
 | --- | --- | --- | --- |
 | 2026-10-25 | Backend foundation: routing, logging, validated settings, SQLite/SQLAlchemy integration | Maintainer reports foundation complete; health/docs confirmed earlier; no independent source review performed for this README | Confirm first tenant migration, seed tenants, begin identity and authorization |
 
+| 2026-10-25 | Added tenant seeding, user/membership models and migrations, Argon2 password utilities, and interactive development admin creation | Migration checks passed; tenant seeding repeated without duplicates; password checks and admin membership inspection passed | Implement login, JWT access tokens, and protected endpoints |
+
 For each future change, add a row with the date, concrete behavior implemented, checks performed, and next action. Replace pending items only after verification; record failures and limitations honestly.
 
 ## Current limitations
 
 - Early local-development implementation, not a deployed SaaS service.
 - No customer-facing agent, chat UI, knowledge ingestion, or tool execution yet.
-- Authentication and tenant isolation remain to be implemented.
+- User identities, tenant memberships, and password hashing are implemented.
+- Login, access tokens, and request-level authorization are not implemented yet.
+- Membership records and role constraints do not themselves enforce tenant isolation.
+- No password reset, email verification, MFA, or account recovery flow exists yet.
 - No billing, WhatsApp integration, arbitrary connectors, or subscription enforcement.
 - No published agent accuracy, security, load, or production reliability results.
 - SQLite connectivity alone does not validate schema state or production scalability.
