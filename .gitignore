@@ -1,0 +1,54 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environment configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# SQLite databases and temporary files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite-journal
+*.sqlite3-journal
+
+# Runtime data: databases, uploads, and vector storage
+/backend/data/
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Python build output
+build/
+*.egg-info/
+
+# Operating system files
+.DS_Store
+Thumbs.db
