@@ -307,8 +307,8 @@ Testing begins with each feature. M8 consolidates the evaluation harness and res
 
 - [x] SQLite engine and request-scoped sessions.
 - [x] Foreign-key enforcement and database readiness.
-- [ ] Confirm model base, tenant model, and initial migration verification.
-- [ ] Idempotent development seed script for two tenants.
+- [x] Confirm model base, tenant model, and initial migration verification.
+- [x] Idempotent development seed script for two tenants.
 - [ ] Users, tenant membership, and customer identity.
 - [ ] Authentication and password hashing.
 - [ ] Tenant/customer authorization checks with negative tests.
@@ -361,6 +361,8 @@ For a model change, from `backend`:
 python -m alembic revision --autogenerate -m "describe the schema change"
 # Review the generated upgrade and downgrade functions before applying.
 python -m alembic upgrade head
+#seed demo tenants
+python -m app.scripts.seed_demo_tenants
 python -m alembic check
 ```
 
