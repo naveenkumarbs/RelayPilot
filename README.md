@@ -70,10 +70,40 @@ Progress reflects the maintainer's reported implementation and manual checks, mo
 - [x] JWT configuration validation and short-lived access tokens using PyJWT.
 - [x] POST `/auth/login` and protected GET `/auth/me`.
 - [x] Successful login and authenticated identity lookup manually verified.
+- [x] Protected tenant membership endpoint: GET `/tenants/{tenant_slug}/me`.
+- [x] Active tenant and membership validation using the authenticated user.
+- [x] Cross-tenant membership access rejected.
+- [x] Reusable verified tenant context for upcoming business operations.
+- [x] Automated authentication and tenant-access tests using isolated SQLite databases.
+- [x] Current pytest suite passes.
 - [ ] Tenant/customer authorization and role enforcement.
 - [ ] Customer chat, RAG, tools, agent orchestration, and escalation.
 
 No LLM credentials are required to run the current backend.
+
+## Tenant authorization
+
+GET `/tenants/{tenant_slug}/me` returns the authenticated user's membership
+only when the user, tenant, and membership are active.
+
+The requested tenant slug selects a workspace; it does not grant access.
+Application code verifies membership against the database before returning
+a TenantContext containing the verified tenant ID, slug, user ID, and role.
+
+| Scenario | Expected response |
+| --- | --- |
+| Active user accessing their active tenant membership | 200 |
+| User accessing another tenant without membership | 403 |
+| Unknown or inactive tenant | 403 |
+| Inactive membership | 403 |
+| Missing or invalid authentication | 401 |
+| Inactive user with a previously issued token | 401 |
+
+Inaccessible tenant scenarios use the same generic response:
+`{"detail": "Tenant access denied"}`.
+
+This boundary currently protects the tenant membership endpoint.
+Role-specific permissions and resource-level authorization remain pending.
 
 ## Architecture and technology
 
@@ -444,10 +474,19 @@ Testing begins with each feature. M8 consolidates the evaluation harness and res
 - [x] Login and short-lived JWT access tokens.
 - [x] Protected authenticated-user endpoint.
 - [x] Successful login and current-user lookup manually verified.
-- [ ] Automated authentication regression tests.
-- [ ] Active tenant membership validation for protected tenant endpoints.
+- [x] Automated authentication regression tests for the currently covered scenarios
+- [x] Active tenant membership validation for protected tenant endpoints.
+- [x] Protected tenant membership endpoint.
+- [x] Cross-tenant membership rejection tests in both directions.
+- [x] Unknown-tenant and missing-authentication tests.
+- [x] Disabled-user, disabled-tenant, and disabled-membership access tests.
+- [x] Current automated test suite passes.
+- [ ] Expired-token and additional JWT validation tests.
+- [ ] Automated migration verification.
 - [ ] Tenant/customer authorization checks with negative tests.
 - [ ] Role permission enforcement.
+- [ ] Customer identity mapping and resource-level ownership checks.
+- [ ] Tenant-scoped authorization for conversations, tickets, documents, and tools.
 - [ ] Disabled-user, disabled-tenant, and disabled-membership access checks.
 
 #### M3–M5 — Customer experience and capabilities
@@ -545,8 +584,47 @@ License and contribution terms have not yet been selected. Repository visibility
 | 2026-10-25 | Backend foundation: routing, logging, validated settings, SQLite/SQLAlchemy integration | Maintainer reports foundation complete; health/docs confirmed earlier; no independent source review performed for this README | Confirm first tenant migration, seed tenants, begin identity and authorization |
 | 2026-10-25 | Added tenant seeding, user/membership models and migrations, Argon2 password utilities, and interactive development admin creation | Migration checks passed; tenant seeding repeated without duplicates; password checks and admin membership inspection passed | Implement login, JWT access tokens, and protected endpoints |
 | 2026-10-26 | Added validated JWT configuration, login, and protected current-user endpoint; authentication savepoint pushed to Git | Successful POST `/auth/login` and authorized GET `/auth/me` manually verified; negative scenarios remain pending | Add active tenant membership validation, tenant endpoints, and authorization tests |
+| 2026-10-26 | Added verified tenant context, protected membership endpoint, and isolated authentication/tenant-access tests | Manual tenant boundary checks passed; current pytest suite passed, including cross-tenant rejection and disabled-access scenarios | Implement role-specific authorization and extend negative tests |
 
 For each future change, add a row with the date, concrete behavior implemented, checks performed, and next action. Replace pending items only after verification; record failures and limitations honestly.
+
+## Automated tests
+
+Install development dependencies from `backend`:
+
+    python -m pip install -r requirements-dev.txt
+
+Run the suite:
+
+    python -m pytest -v
+
+Uvicorn does not need to be running. FastAPI's TestClient invokes the
+application directly.
+
+Each test uses a fresh temporary SQLite database with synthetic tenants,
+users, and memberships. The database dependency is overridden; real
+password verification, JWT validation, and tenant authorization still run.
+
+Test configuration uses a synthetic signing secret. Development database
+records and credentials are not used.
+
+### Verified coverage
+
+- Successful login followed by authenticated identity lookup.
+- User response excludes password hashes and unexpected fields.
+- Incorrect passwords and unknown accounts receive the same error response.
+- Invalid Bearer tokens are rejected.
+- Missing authentication is rejected on the tenant endpoint.
+- Both demo users can access their own tenant membership.
+- Cross-tenant access is rejected in both directions.
+- Unknown tenant access is rejected.
+- Previously issued tokens cannot bypass a disabled user, tenant, or membership.
+
+The current suite passes.
+
+These tests create disposable schemas from SQLAlchemy metadata. They do not
+verify Alembic migrations. Expired-token tests, broader JWT validation tests,
+role permissions, and resource-level isolation tests remain pending.
 
 ## Current limitations
 
@@ -556,7 +634,10 @@ For each future change, add a row with the date, concrete behavior implemented, 
 
 - User identities, tenant memberships, and password hashing are implemented.
 
-- JWT login and current-user authentication are implemented; tenant/customer authorization and role enforcement are pending.
+- JWT login and current-user authentication are implemented; 
+- Tenant membership authorization is implemented for the membership endpoint.
+- Role-specific permissions and customer/resource-level authorization remain pending.
+- Passing tests cover the implemented endpoints; they do not establish application-wide tenant isolation or production readiness.
 - No login rate limiting, refresh tokens, or individual-token revocation yet.
 
 - Membership records and role constraints do not themselves enforce tenant isolation.
