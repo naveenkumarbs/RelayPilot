@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path 
 from typing import Literal 
-from pydantic import Field
+from pydantic import Field, SecretStr, field_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     database_path: Path = Path("data/relaypilot.db")
     database_timeout_seconds: float = Field(default=10.0, gt=0)
+    jwt_secret_key: SecretStr
+    access_token_expire_minutes: int = Field(default=15, ge=1, le=60)
+    jwt_issuer: str = "relaypilot"
+    jwt_audience: str = "relaypilot-api"
 
     @property
     def resolved_database_path(self) -> Path: 
@@ -31,7 +35,14 @@ class Settings(BaseSettings):
 
         return path.resolve()
 
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def validate_jwt_secret(cls, value: SecretStr) -> SecretStr:
+        if len(value.get_secret_value()) < 32:
+            raise ValueError("JWT secret must contain at least 32 characters.")
+        return value
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+

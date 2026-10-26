@@ -4,3 +4,4 @@ pydantic-settings
 SQLAlchemy>=2.0,<2.1
 alembic
 pwdlib[argon2]
+PyJWT>=2.10,<3
